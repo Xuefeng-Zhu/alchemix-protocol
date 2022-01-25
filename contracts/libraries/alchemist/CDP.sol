@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.6.12;
 
-import {Math} from '@openzeppelin/contracts/math/Math.sol';
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import {SafeMath} from '@openzeppelin/contracts/math/SafeMath.sol';
+import {Math} from "@openzeppelin/contracts/math/Math.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 
-import {FixedPointMath} from '../FixedPointMath.sol';
-import {IDetailedERC20} from '../../interfaces/IDetailedERC20.sol';
-import 'hardhat/console.sol';
+import {FixedPointMath} from "../FixedPointMath.sol";
+import {IDetailedERC20} from "../../interfaces/IDetailedERC20.sol";
+import "hardhat/console.sol";
 
 /// @title CDP
 ///
@@ -34,7 +34,9 @@ library CDP {
     function update(Data storage _self, Context storage _ctx) internal {
         uint256 _earnedYield = _self.getEarnedYield(_ctx);
         if (_earnedYield > _self.totalDebt) {
-            _self.totalCredit = _earnedYield.sub(_self.totalDebt);
+            _self.totalCredit = _self.totalCredit.add(
+                _earnedYield.sub(_self.totalDebt)
+            );
             _self.totalDebt = 0;
         } else {
             _self.totalDebt = _self.totalDebt.sub(_earnedYield);
@@ -58,8 +60,15 @@ library CDP {
     /// A CDP is healthy if its collateralization ratio is greater than the global collateralization limit.
     ///
     /// @return if the CDP is healthy.
-    function isHealthy(Data storage _self, Context storage _ctx) internal view returns (bool) {
-        return _ctx.collateralizationLimit.cmp(_self.getCollateralizationRatio(_ctx)) <= 0;
+    function isHealthy(Data storage _self, Context storage _ctx)
+        internal
+        view
+        returns (bool)
+    {
+        return
+            _ctx.collateralizationLimit.cmp(
+                _self.getCollateralizationRatio(_ctx)
+            ) <= 0;
     }
 
     function getUpdatedTotalDebt(Data storage _self, Context storage _ctx)
@@ -111,7 +120,9 @@ library CDP {
         FixedPointMath.FixedDecimal memory _lastAccumulatedYieldWeight = _self
             .lastAccumulatedYieldWeight;
 
-        if (_currentAccumulatedYieldWeight.cmp(_lastAccumulatedYieldWeight) == 0) {
+        if (
+            _currentAccumulatedYieldWeight.cmp(_lastAccumulatedYieldWeight) == 0
+        ) {
             return 0;
         }
 
