@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.6.12;
 
-//import "hardhat/console.sol";
+import {Math} from "@openzeppelin/contracts/math/Math.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {IDetailedERC20} from "../../interfaces/IDetailedERC20.sol";
+import {IVaultAdapter} from "../../interfaces/IVaultAdapter.sol";
 
-import {Math} from '@openzeppelin/contracts/math/Math.sol';
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import {SafeMath} from '@openzeppelin/contracts/math/SafeMath.sol';
-import {IDetailedERC20} from '../../interfaces/IDetailedERC20.sol';
-import {IVaultAdapter} from '../../interfaces/IVaultAdapter.sol';
-import 'hardhat/console.sol';
+// import "hardhat/console.sol";
 
 /// @title Pool
 ///
@@ -45,7 +44,10 @@ library AlchemistVault {
     /// @dev Deposits funds from the caller into the vault.
     ///
     /// @param _amount the amount of funds to deposit.
-    function deposit(Data storage _self, uint256 _amount) internal returns (uint256) {
+    function deposit(Data storage _self, uint256 _amount)
+        internal
+        returns (uint256)
+    {
         // Push the token that the vault accepts onto the stack to save gas.
         IDetailedERC20 _token = _self.token();
 
@@ -71,10 +73,8 @@ library AlchemistVault {
         address _recipient,
         uint256 _amount
     ) internal returns (uint256, uint256) {
-        (uint256 _withdrawnAmount, uint256 _decreasedValue) = _self.directWithdraw(
-            _recipient,
-            _amount
-        );
+        (uint256 _withdrawnAmount, uint256 _decreasedValue) = _self
+            .directWithdraw(_recipient, _amount);
         _self.totalDeposited = _self.totalDeposited.sub(_decreasedValue);
         return (_withdrawnAmount, _decreasedValue);
     }
@@ -95,7 +95,9 @@ library AlchemistVault {
 
         _self.adapter.withdraw(_recipient, _amount);
 
-        uint256 _withdrawnAmount = _token.balanceOf(_recipient).sub(_startingBalance);
+        uint256 _withdrawnAmount = _token.balanceOf(_recipient).sub(
+            _startingBalance
+        );
         uint256 _decreasedValue = _startingTotalValue.sub(_self.totalValue());
 
         return (_withdrawnAmount, _decreasedValue);
@@ -137,7 +139,11 @@ library AlchemistVault {
     /// @param _index the index in the list.
     ///
     /// @return the element at the specified index.
-    function get(List storage _self, uint256 _index) internal view returns (Data storage) {
+    function get(List storage _self, uint256 _index)
+        internal
+        view
+        returns (Data storage)
+    {
         return _self.elements[_index];
     }
 
@@ -157,7 +163,7 @@ library AlchemistVault {
     /// @return the index of the last element.
     function lastIndex(List storage _self) internal view returns (uint256) {
         uint256 _length = _self.length();
-        return _length.sub(1, 'AlchemistVault.List: empty');
+        return _length.sub(1, "AlchemistVault.List: empty");
     }
 
     /// @dev Gets the number of elements in the list.

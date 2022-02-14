@@ -87,14 +87,6 @@ contract AlToken is AccessControl, ERC20("Yaxis USD", "yalUSD") {
         whiteList[_toWhitelist] = _state;
     }
 
-    /// This function reverts if the caller does not have the admin role.
-    ///
-    /// @param _newSentinel the account to set as sentinel.
-
-    function setSentinel(address _newSentinel) external onlyAdmin {
-        _setupRole(SENTINEL_ROLE, _newSentinel);
-    }
-
     /// This function reverts if the caller does not have the sentinel role.
     ///
     /// @param _toBlacklist the account to mint tokens to.

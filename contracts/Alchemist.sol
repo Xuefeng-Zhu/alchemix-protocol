@@ -17,8 +17,6 @@ import {IMintableERC20} from "./interfaces/IMintableERC20.sol";
 import {ICurveToken} from "./interfaces/ICurveToken.sol";
 import {IVaultAdapter} from "./interfaces/IVaultAdapter.sol";
 
-import "hardhat/console.sol";
-
 // ERC20,removing ERC20 from the alchemist
 //    ___    __        __                _               ___                              __         _
 //   / _ |  / / ____  / /  ___   __ _   (_) __ __       / _ \  ____ ___   ___ ___   ___  / /_  ___  (_)
@@ -816,7 +814,7 @@ contract Alchemist is ReentrancyGuard {
         }
         _;
     }
-    /// @dev Checks that caller is not a eoa.
+    /// @dev Checks that caller is not a contract.
     ///
     /// This is used to prevent contracts from interacting.
     modifier noContractAllowed() {
