@@ -77,6 +77,12 @@ module.exports = {
   networks: {
     mainnet: createNetworkConfig('mainnet'),
     kovan: createNetworkConfig('kovan'),
+    localhost: {
+      url: 'http://127.0.0.1:8545',
+      saveDeployments: true,
+      loggingEnabled: true,
+      companionNetworks: { ethereum: 'mainnet' },
+    },
   },
   solidity: {
     compilers: [

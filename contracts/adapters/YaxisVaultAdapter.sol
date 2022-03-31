@@ -8,6 +8,7 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IDetailedERC20} from "../interfaces/IDetailedERC20.sol";
 import {IVaultAdapter} from "../interfaces/IVaultAdapter.sol";
 import {IVault} from "../interfaces/IVault.sol";
+import {IGauge} from "../interfaces/IGauge.sol";
 
 /// @title YaxisVaultAdapter
 ///
@@ -19,13 +20,26 @@ contract YaxisVaultAdapter is IVaultAdapter {
     /// @dev The vault that the adapter is wrapping.
     IVault public immutable vault;
 
+    /// @dev The gauge of the vault that the adapter is wrapping.
+    IGauge public immutable gauge;
+
     /// @dev The address which has admin control over this contract.
     address public immutable admin;
+
+    /// @dev The address which will receive reward.
+    address public immutable reward;
 
     /// @dev The token that the vault accepts
     IDetailedERC20 public immutable override token;
 
-    constructor(IVault _vault, address _admin) public {
+    /// @dev The token that the vault issued
+    IDetailedERC20 public immutable lpToken;
+
+    constructor(
+        IVault _vault,
+        address _admin,
+        address _reward
+    ) public {
         require(
             _admin != address(0),
             "YaxisVaultAdapter: admin address cannot be 0x0."
@@ -33,19 +47,24 @@ contract YaxisVaultAdapter is IVaultAdapter {
 
         vault = _vault;
         admin = _admin;
+        reward = _reward;
+
+        address _gauge = _vault.gauge();
         IDetailedERC20 _token = IDetailedERC20(_vault.getToken());
+        IDetailedERC20 _lpToken = IDetailedERC20(_vault.getLPToken());
+        gauge = IGauge(_gauge);
         token = _token;
+        lpToken = _lpToken;
+
         _token.safeApprove(address(_vault), uint256(-1));
+        _lpToken.safeApprove(address(_gauge), uint256(-1));
     }
 
     /// @dev Gets the total value of the assets that the adapter holds in the vault.
     ///
     /// @return the total assets.
     function totalValue() external view override returns (uint256) {
-        return
-            _sharesToTokens(
-                IDetailedERC20(vault.getLPToken()).balanceOf(address(this))
-            );
+        return _sharesToTokens(gauge.balanceOf(address(this)));
     }
 
     /// @dev Deposits tokens into the vault.
@@ -53,6 +72,7 @@ contract YaxisVaultAdapter is IVaultAdapter {
     /// @param _amount the amount of tokens to deposit into the vault.
     function deposit(uint256 _amount) external override {
         vault.deposit(_amount);
+        gauge.deposit(lpToken.balanceOf(address(this)));
     }
 
     /// @dev Withdraws tokens from the vault to the recipient.
@@ -66,13 +86,29 @@ contract YaxisVaultAdapter is IVaultAdapter {
 
         IDetailedERC20 _token = token;
         uint256 beforeBalance = _token.balanceOf(address(this));
+        uint256 share = _tokensToShares(_amount);
 
-        vault.withdraw(_tokensToShares(_amount));
+        gauge.withdraw(share);
+        vault.withdraw(share);
 
         _token.safeTransfer(
             _recipient,
             _token.balanceOf(address(this)) - beforeBalance
         );
+    }
+
+    /// @dev Claim gauge reward.
+    ///
+    /// @param _rewardLength the reward token number in guage.
+    function claimReward(uint256 _rewardLength) external {
+        gauge.claim_rewards();
+        for (uint256 i = 0; i < _rewardLength; i++) {
+            IDetailedERC20 rewardToken = IDetailedERC20(gauge.reward_tokens(i));
+            uint256 rewardBalance = rewardToken.balanceOf(address(this));
+            if (rewardBalance > 0) {
+                rewardToken.transfer(reward, rewardBalance);
+            }
+        }
     }
 
     /// @dev Computes the number of tokens an amount of shares is worth.
