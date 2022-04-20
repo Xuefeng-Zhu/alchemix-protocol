@@ -9,6 +9,7 @@ import {IDetailedERC20} from "../interfaces/IDetailedERC20.sol";
 import {IVaultAdapter} from "../interfaces/IVaultAdapter.sol";
 import {IVault} from "../interfaces/IVault.sol";
 import {IGauge} from "../interfaces/IGauge.sol";
+import {IRewards} from "../interfaces/IRewards.sol";
 
 /// @title YaxisVaultAdapter
 ///
@@ -26,8 +27,8 @@ contract YaxisVaultAdapter is IVaultAdapter {
     /// @dev The address which has admin control over this contract.
     address public immutable admin;
 
-    /// @dev The address which will receive reward.
-    address public immutable reward;
+    /// @dev The address which will receive rewards.
+    address public immutable rewards;
 
     /// @dev The token that the vault accepts
     IDetailedERC20 public immutable override token;
@@ -38,16 +39,20 @@ contract YaxisVaultAdapter is IVaultAdapter {
     constructor(
         IVault _vault,
         address _admin,
-        address _reward
+        address _rewards
     ) public {
         require(
             _admin != address(0),
             "YaxisVaultAdapter: admin address cannot be 0x0."
         );
+        require(
+            _rewards != address(0),
+            "YaxisVaultAdapter: rewards address cannot be 0x0."
+        );
 
         vault = _vault;
         admin = _admin;
-        reward = _reward;
+        rewards = _rewards;
 
         address _gauge = _vault.gauge();
         IDetailedERC20 _token = IDetailedERC20(_vault.getToken());
@@ -97,17 +102,15 @@ contract YaxisVaultAdapter is IVaultAdapter {
         );
     }
 
-    /// @dev Claim gauge reward.
+    /// @dev Claim gauge rewards.
     ///
-    /// @param _rewardLength the reward token number in guage.
-    function claimReward(uint256 _rewardLength) external {
+    function claimReward() external {
         gauge.claim_rewards();
-        for (uint256 i = 0; i < _rewardLength; i++) {
-            IDetailedERC20 rewardToken = IDetailedERC20(gauge.reward_tokens(i));
-            uint256 rewardBalance = rewardToken.balanceOf(address(this));
-            if (rewardBalance > 0) {
-                rewardToken.transfer(reward, rewardBalance);
-            }
+        IDetailedERC20 rewardToken = IDetailedERC20(gauge.reward_tokens(0));
+        uint256 rewardBalance = rewardToken.balanceOf(address(this));
+        if (rewardBalance > 0) {
+            rewardToken.transfer(rewards, rewardBalance);
+            IRewards(rewards).notifyRewardAmount(rewardBalance);
         }
     }
 
