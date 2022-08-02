@@ -30,7 +30,7 @@ import {IVaultAdapter} from "./interfaces/IVaultAdapter.sol";
 //  /  _____  \  |  `----.|  `----.|  |  |  | |  |____ |  |  |  | |  | .----)   |       |  |
 // /__/     \__\ |_______| \______||__|  |__| |_______||__|  |__| |__| |_______/        |__|
 
-contract Alchemist is ReentrancyGuard {
+contract ConvertAlchemist is ReentrancyGuard {
     using CDP for CDP.Data;
     using FixedPointMath for FixedPointMath.FixedDecimal;
     using AlchemistVault for AlchemistVault.Data;
@@ -122,6 +122,8 @@ contract Alchemist is ReentrancyGuard {
     /// @dev The token that this contract is using as the source of parent asset.
     IMintableERC20 public sourceToken;
 
+    uint256 public sourceIndex;
+
     /// @dev The token that this contract is using as the parent asset.
     IMintableERC20 public token;
 
@@ -178,6 +180,7 @@ contract Alchemist is ReentrancyGuard {
 
     constructor(
         IMintableERC20 _sourceToken,
+        uint256 _sourceIndex,
         IMintableERC20 _token,
         IMintableERC20 _xtoken,
         address _governance,
@@ -198,6 +201,8 @@ contract Alchemist is ReentrancyGuard {
             "Alchemist: sentinel address cannot be 0x0."
         );
 
+        sourceToken = _sourceToken;
+        sourceIndex = _sourceIndex;
         token = _token;
         xtoken = _xtoken;
         governance = _governance;
@@ -542,16 +547,25 @@ contract Alchemist is ReentrancyGuard {
         CDP.Data storage _cdp = _cdps[msg.sender];
         _cdp.update(_ctx);
 
-        token.safeTransferFrom(msg.sender, address(this), _amount);
-        if (_amount >= flushActivator) {
+        sourceToken.safeTransferFrom(msg.sender, address(this), _amount);
+        sourceToken.approve(address(token), _amount);
+
+        uint256[] memory tokenAmounts = new uint256[](2);
+        tokenAmounts[sourceIndex] = _amount;
+        uint256 mintedAmount = ICurveToken(address(token)).add_liquidity(
+            tokenAmounts,
+            0
+        );
+
+        if (mintedAmount >= flushActivator) {
             flushActiveVault();
         }
-        totalDeposited = totalDeposited.add(_amount);
+        totalDeposited = totalDeposited.add(mintedAmount);
 
-        _cdp.totalDeposited = _cdp.totalDeposited.add(_amount);
+        _cdp.totalDeposited = _cdp.totalDeposited.add(mintedAmount);
         _cdp.lastDeposit = block.number;
 
-        emit TokensDeposited(msg.sender, _amount);
+        emit TokensDeposited(msg.sender, mintedAmount);
     }
 
     /// @dev Attempts to withdraw part of a CDP's collateral.
@@ -919,7 +933,12 @@ contract Alchemist is ReentrancyGuard {
         );
 
         if (_recipient != address(this)) {
-            token.safeTransfer(_recipient, _bufferedAmount);
+            ICurveToken(address(token)).remove_liquidity_one_coin(
+                _bufferedAmount,
+                sourceIndex,
+                0,
+                _recipient
+            );
         }
 
         uint256 _totalWithdrawn = _bufferedAmount;
@@ -931,7 +950,14 @@ contract Alchemist is ReentrancyGuard {
         if (_remainingAmount > 0) {
             (uint256 _withdrawAmount, uint256 _decreasedValue) = _vaults
                 .last()
-                .withdraw(_recipient, _remainingAmount);
+                .withdraw(address(this), _remainingAmount);
+
+            ICurveToken(address(token)).remove_liquidity_one_coin(
+                _withdrawAmount,
+                sourceIndex,
+                0,
+                _recipient
+            );
 
             _totalWithdrawn = _totalWithdrawn.add(_withdrawAmount);
             _totalDecreasedValue = _totalDecreasedValue.add(_decreasedValue);

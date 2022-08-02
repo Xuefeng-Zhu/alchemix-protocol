@@ -10,18 +10,8 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const addresses = config[chainId];
   console.log(chainId);
 
-  let baseToken;
-
-  if (!addresses) {
-    await deploy('ERC20Mock', {
-      from: deployer,
-      args: ['MIM', 'MIM', 18],
-      log: true,
-    });
-    baseToken = await ethers.getContract('ERC20Mock', deployer);
-  } else {
-    baseToken = await ethers.getContractAt('ERC20Mock', addresses.mimCrv);
-  }
+  const sourceToken = await ethers.getContractAt('ERC20Mock', addresses.mim);
+  const baseToken = await ethers.getContractAt('ERC20Mock', addresses.mimCrv);
 
   await deploy('AlToken', {
     from: deployer,
@@ -35,9 +25,16 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     args: [alToken.address, baseToken.address, deployer],
     log: true,
   });
-  await deploy('Alchemist', {
+  await deploy('ConvertAlchemist', {
     from: deployer,
-    args: [baseToken.address, alToken.address, deployer, deployer],
+    args: [
+      sourceToken.address,
+      0,
+      baseToken.address,
+      alToken.address,
+      deployer,
+      deployer,
+    ],
     log: true,
   });
 
@@ -51,7 +48,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   await alchemist.setRewards(addresses?.reward || deployer);
 
   let adapter;
-  if (!addresses) {
+  if (chainId === 42) {
     await deploy('YearnControllerMock', {
       from: deployer,
       args: [],
@@ -85,4 +82,4 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   }
   await alchemist.initialize(adapter.address);
 };
-module.exports.tags = ['Alchemist'];
+module.exports.tags = ['ConvertAlchemist'];
