@@ -8,7 +8,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
   const addresses = config[chainId];
-  console.log(chainId);
+  console.log('chainId', chainId);
 
   const sourceToken = await ethers.getContractAt('ERC20Mock', addresses.mim);
   const baseToken = await ethers.getContractAt('ERC20Mock', addresses.mimCrv);
@@ -39,7 +39,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   });
 
   const transmuter = await ethers.getContract('Transmuter', deployer);
-  const alchemist = await ethers.getContract('Alchemist', deployer);
+  const alchemist = await ethers.getContract('ConvertAlchemist', deployer);
 
   await alToken.setWhitelist(alchemist.address, true);
   await transmuter.setWhitelist(alchemist.address, true);
@@ -48,7 +48,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   await alchemist.setRewards(addresses?.reward || deployer);
 
   let adapter;
-  if (chainId === 42) {
+  if (chainId == 42) {
     await deploy('YearnControllerMock', {
       from: deployer,
       args: [],

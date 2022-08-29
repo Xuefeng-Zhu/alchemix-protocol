@@ -9,19 +9,15 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const chainId = await getChainId();
   console.log(chainId);
   let addresses = config[chainId];
-  addresses = undefined;
 
-  const alchemist = await ethers.getContract('Alchemist', deployer);
+  const alchemist = await ethers.getContract('ConvertAlchemist', deployer);
 
   let adapter;
   let rewards;
-  if (!addresses) {
-    // const baseToken = await ethers.getContract('ERC20Mock', deployer);
-    const baseTokenAddress = '0x7D91365bC65CF9caDC6aE1d86d35f5add750Fe37';
-
+  if (chainId == 42) {
     await deploy('YaxisVaultMock', {
       from: deployer,
-      args: [baseTokenAddress],
+      args: [addresses.mimCrv],
       log: true,
     });
     const vault = await ethers.getContract('YaxisVaultMock', deployer);
@@ -36,7 +32,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
     await deploy('Rewards', {
       from: deployer,
-      args: [gauge.address, baseTokenAddress, 60 * 60 * 24 * 365],
+      args: [gauge.address, addresses.mimCrv, 60 * 60 * 24 * 365],
       log: true,
     });
     rewards = await ethers.getContract('Rewards', deployer);

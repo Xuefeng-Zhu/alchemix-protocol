@@ -122,7 +122,7 @@ contract ConvertAlchemist is ReentrancyGuard {
     /// @dev The token that this contract is using as the source of parent asset.
     IMintableERC20 public sourceToken;
 
-    uint256 public sourceIndex;
+    int128 public sourceIndex;
 
     /// @dev The token that this contract is using as the parent asset.
     IMintableERC20 public token;
@@ -180,7 +180,7 @@ contract ConvertAlchemist is ReentrancyGuard {
 
     constructor(
         IMintableERC20 _sourceToken,
-        uint256 _sourceIndex,
+        int128 _sourceIndex,
         IMintableERC20 _token,
         IMintableERC20 _xtoken,
         address _governance,
@@ -550,8 +550,8 @@ contract ConvertAlchemist is ReentrancyGuard {
         sourceToken.safeTransferFrom(msg.sender, address(this), _amount);
         sourceToken.approve(address(token), _amount);
 
-        uint256[] memory tokenAmounts = new uint256[](2);
-        tokenAmounts[sourceIndex] = _amount;
+        uint256[2] memory tokenAmounts;
+        tokenAmounts[uint256(sourceIndex)] = _amount;
         uint256 mintedAmount = ICurveToken(address(token)).add_liquidity(
             tokenAmounts,
             0
@@ -625,9 +625,24 @@ contract ConvertAlchemist is ReentrancyGuard {
         CDP.Data storage _cdp = _cdps[msg.sender];
         _cdp.update(_ctx);
 
+        uint256 distributedAmount;
+
         if (_parentAmount > 0) {
-            token.safeTransferFrom(msg.sender, address(this), _parentAmount);
-            _distributeToTransmuter(_parentAmount);
+            sourceToken.safeTransferFrom(
+                msg.sender,
+                address(this),
+                _parentAmount
+            );
+            sourceToken.approve(address(token), _parentAmount);
+
+            uint256[2] memory tokenAmounts;
+            tokenAmounts[uint256(sourceIndex)] = _parentAmount;
+            distributedAmount = ICurveToken(address(token)).add_liquidity(
+                tokenAmounts,
+                0
+            );
+
+            _distributeToTransmuter(distributedAmount);
         }
 
         if (_childAmount > 0) {
@@ -636,10 +651,10 @@ contract ConvertAlchemist is ReentrancyGuard {
             xtoken.lowerHasMinted(_childAmount);
         }
 
-        uint256 _totalAmount = _parentAmount.add(_childAmount);
+        uint256 _totalAmount = distributedAmount.add(_childAmount);
         _cdp.totalDebt = _cdp.totalDebt.sub(_totalAmount, "");
 
-        emit TokensRepaid(msg.sender, _parentAmount, _childAmount);
+        emit TokensRepaid(msg.sender, distributedAmount, _childAmount);
     }
 
     /// @dev Attempts to liquidate part of a CDP's collateral to pay back its debt.

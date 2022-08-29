@@ -119,9 +119,6 @@ contract Alchemist is ReentrancyGuard {
         uint256 decreasedValue
     );
 
-    /// @dev The token that this contract is using as the source of parent asset.
-    IMintableERC20 public sourceToken;
-
     /// @dev The token that this contract is using as the parent asset.
     IMintableERC20 public token;
 
@@ -177,7 +174,6 @@ contract Alchemist is ReentrancyGuard {
     uint256 public pegMinimum;
 
     constructor(
-        IMintableERC20 _sourceToken,
         IMintableERC20 _token,
         IMintableERC20 _xtoken,
         address _governance,
