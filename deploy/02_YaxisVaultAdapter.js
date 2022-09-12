@@ -14,7 +14,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
   let adapter;
   let rewards;
-  if (chainId == 42) {
+  if (chainId != 1) {
     await deploy('YaxisVaultMock', {
       from: deployer,
       args: [addresses.mimCrv],

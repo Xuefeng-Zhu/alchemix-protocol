@@ -48,7 +48,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   await alchemist.setRewards(addresses?.reward || deployer);
 
   let adapter;
-  if (chainId == 42) {
+  if (chainId != 1) {
     await deploy('YearnControllerMock', {
       from: deployer,
       args: [],
